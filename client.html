@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Paint Server</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		body { margin: 0; overflow: hidden; }
+		canvas {
+			border: 1px solid black; box-sizing: border-box;
+			width: 90%; margin: 5vw 5% 0; height:0px; padding-bottom: 56.25%;
+		}
+		#output.closed { background: salmon; }
+	</style>
+</head>
+
+<body>
+	<canvas id="main"></canvas>
+	<p id="output"></p>
+	<script type="text/javascript">
+		var ws = new WebSocket('ws://bb.ngrok.io');
+		var canvas = document.getElementById("main")
+		var output = document.getElementById('output')
+
+		canvas.onmousedown = MouseDown
+		canvas.ontouchstart = TouchStart
+
+		resize()
+		window.onresize = resize
+
+		function ab2str(buf) {
+			return String.fromCharCode.apply(null, new Uint16Array(buf));
+		}
+		function str2ab(str) {
+			var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+			var bufView = new Uint16Array(buf);
+			for (var i=0, strLen=str.length; i < strLen; i++) {
+				bufView[i] = str.charCodeAt(i);
+			}
+			return buf;
+		}
+
+		function resize(e) {
+			const { width, height } = canvas.getBoundingClientRect()
+			canvas.width = width
+			canvas.height = height
+		}
+
+		function MouseDown(e) {
+			sendData(`${e.clientX / canvas.width}`)
+			canvas.addEventListener("mousemove", MouseMove)
+			window.addEventListener("mouseup", MouseUp)
+		}
+		
+		function MouseMove(e) {
+			// sendData(str2ab(`${e.clientX / canvas.width}`))
+			sendData(`${e.clientX / canvas.width}`)
+		}
+
+		function MouseUp(e) {
+			canvas.removeEventListener("mousemove", MouseMove)
+			window.removeEventListener("mouseup", MouseUp)
+		}
+
+		function TouchStart(e) {
+			sendData(`${e.targetTouches[0].clientX / canvas.width}`)
+			canvas.addEventListener("touchmove", TouchMove)
+			window.addEventListener("touchend", TouchEnd)
+		}
+		
+		function TouchMove(e) {
+			// sendData(str2ab(`${e.targetTouches[0].clientX / canvas.width}`))
+			sendData(`${e.targetTouches[0].clientX / canvas.width}`)
+		}
+
+		function TouchEnd(e) {
+			canvas.removeEventListener("touchmove", TouchMove)
+			window.removeEventListener("touchend", TouchEnd)
+		}
+
+		function sendData(message) {
+			ws.send(message);
+		}
+
+		ws.onmessage = function (e) {
+			console.log(event.data);
+			output.innerHTML = event.data;
+		}
+
+		ws.onclose = function (e) {
+			output.className = "closed"
+			output.innerHTML = "connection closed (try refresh)"
+		} 
+	</script>
+</body>
+</html>
