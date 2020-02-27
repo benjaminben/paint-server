@@ -4,6 +4,7 @@
 	<title>Paint Server</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<style>
+		html, body { height: 100%; }
 		body { margin: 0; overflow: hidden; }
 		canvas {
 			border: 1px solid black; box-sizing: border-box;
@@ -20,6 +21,8 @@
 		var ws = new WebSocket('ws://bb.ngrok.io');
 		var canvas = document.getElementById("main")
 		var output = document.getElementById('output')
+
+		// ws.binaryType = 'arraybuffer'
 
 		canvas.onmousedown = MouseDown
 		canvas.ontouchstart = TouchStart
@@ -39,6 +42,17 @@
 			return buf;
 		}
 
+		function Factory(buffer) {
+			return new Blob([JSON.stringify(buffer)], {type: "application/json"})
+		}
+
+		function formatClientEvent(c) {
+			return {
+				u: c.clientX / canvas.width,
+				v: c.clientY / canvas.height,
+			}
+		}
+
 		function resize(e) {
 			const { width, height } = canvas.getBoundingClientRect()
 			canvas.width = width
@@ -46,14 +60,13 @@
 		}
 
 		function MouseDown(e) {
-			sendData(`${e.clientX / canvas.width}`)
+			sendData(Factory(formatClientEvent(e)))
 			canvas.addEventListener("mousemove", MouseMove)
 			window.addEventListener("mouseup", MouseUp)
 		}
 		
 		function MouseMove(e) {
-			// sendData(str2ab(`${e.clientX / canvas.width}`))
-			sendData(`${e.clientX / canvas.width}`)
+			sendData(Factory(formatClientEvent(e)))
 		}
 
 		function MouseUp(e) {
@@ -62,14 +75,13 @@
 		}
 
 		function TouchStart(e) {
-			sendData(`${e.targetTouches[0].clientX / canvas.width}`)
+			sendData(Factory(formatClientEvent(e.targetTouches[0])))
 			canvas.addEventListener("touchmove", TouchMove)
 			window.addEventListener("touchend", TouchEnd)
 		}
 		
 		function TouchMove(e) {
-			// sendData(str2ab(`${e.targetTouches[0].clientX / canvas.width}`))
-			sendData(`${e.targetTouches[0].clientX / canvas.width}`)
+			sendData(Factory(formatClientEvent(e.targetTouches[0])))
 		}
 
 		function TouchEnd(e) {

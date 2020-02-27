@@ -1,3 +1,4 @@
+import json
 # me - this DAT.
 # webServerDAT - the connected Web Server DAT
 # request - A dictionary of the request fields. The dictionary will always contain the below entries, plus any additional entries dependent on the contents of the request
@@ -15,6 +16,14 @@
 # return the response dictionary
 
 connections = op("connections")
+conns = {}
+
+def updatePlayer(client, data):
+	# for p in data:
+	o = op("conn"+str(connections[client,0].row))
+	o.op('clientX').panel.u = data['u']
+	o.op('clientY').panel.v = data['v']
+	return
 
 def onHTTPRequest(webServerDAT, request, response):
 	print("incoming")
@@ -35,14 +44,16 @@ def onWebSocketClose(webServerDAT, client):
 	return
 
 def onWebSocketReceiveText(webServerDAT, client, data):
-	connIdx = connections[client, 0].row
-	op("conn"+str(connIdx)+"/clientX").panel.u = float(data)
+	connIdx = str(connections[client, 0].row)
+	op("conn{}/clientX".format(connIdx)).panel.u = float(data)
+	op("conn{}/clientY".format(connIdx)).panel.v = float(data)
 	webServerDAT.webSocketSendText(client, data)
 	return
 
 def onWebSocketReceiveBinary(webServerDAT, client, data):
-	# print("socket binary received")
-	webServerDAT.webSocketSendBinary(client, data)
+	# print("socket binary received", float(data))
+	updatePlayer(client, json.loads(data.decode()))
+	# webServerDAT.webSocketSendBinary(client, data)
 	return
 
 def onWebSocketReceivePing(webServerDAT, client, data):
@@ -55,10 +66,13 @@ def onWebSocketReceivePong(webServerDAT, client, data):
 
 def onServerStart(webServerDAT):
 	print("server alive")
+	connections.clear()
+	conns.clear()
 	return
 
 def onServerStop(webServerDAT):
 	print("server dun")
 	connections.clear()
+	conns.clear()
 	return
 	
