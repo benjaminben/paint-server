@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Paint Server</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		html, body { height: 100%; color: white; }
+		body { margin: 0; overflow: hidden; }
+		canvas {
+			position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black;
+		}
+		#output.closed { background: salmon; }
+	</style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+	<script type="application/javscript" src="https://raw.githubusercontent.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+	<p id="output"></p>
+	<script type="text/javascript">
+		var ws = new WebSocket('ws://bb.ngrok.io');
+		var output = document.getElementById('output')
+
+		var renderer = new THREE.WebGLRenderer();
+		renderer.setSize( window.innerWidth, window.innerHeight );
+		document.body.appendChild( renderer.domElement );
+		
+		var scene = new THREE.Scene();
+		var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+		var controls = new THREE.OrbitControls( camera, renderer.domElement );
+		//controls.update() must be called after any manual changes to the camera's transform
+		camera.position.set( 0, 20, 100 );
+		controls.update();
+
+		var geometry = new THREE.BoxGeometry();
+		var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+		var cube = new THREE.Mesh( geometry, material );
+		scene.add( cube );
+
+		function animate() {
+			requestAnimationFrame( animate );
+			controls.update()
+			renderer.render( scene, camera );
+		}
+		animate();
+
+		resize()
+		window.onresize = resize
+
+		function Factory(buffer) {
+			return new Blob([JSON.stringify(buffer)], {type: "application/json"})
+		}
+
+		function formatClientEvent(c) {
+			return {
+				u: c.clientX / canvas.width,
+				v: c.clientY / canvas.height,
+			}
+		}
+
+		function resize(e) {
+			const { width, height } = renderer.domElement.getBoundingClientRect()
+			renderer.setSize( width, height );
+		}
+
+		function sendData(message) {
+			ws.send(message);
+		}
+
+		ws.onmessage = function (e) {
+			console.log(event.data);
+			output.innerHTML = event.data;
+		}
+
+		ws.onclose = function (e) {
+			output.className = "closed"
+			output.innerHTML = "connection closed (try refresh)"
+		} 
+
+
+		function bindUserEvents() {
+			canvas.onmousedown = mouseDown
+			canvas.ontouchstart = touchStart
+		}
+
+		function mouseDown(e) {
+			sendData(Factory(formatClientEvent(e)))
+			canvas.addEventListener("mousemove", mouseMove)
+			window.addEventListener("mouseup", mouseUp)
+		}
+		
+		function mouseMove(e) {
+			sendData(Factory(formatClientEvent(e)))
+		}
+
+		function mouseUp(e) {
+			canvas.removeEventListener("mousemove", mouseMove)
+			window.removeEventListener("mouseup", mouseUp)
+		}
+
+		function touchStart(e) {
+			sendData(Factory(formatClientEvent(e.targetTouches[0])))
+			canvas.addEventListener("touchmove", touchMove)
+			window.addEventListener("touchend", touchEnd)
+		}
+		
+		function touchMove(e) {
+			sendData(Factory(formatClientEvent(e.targetTouches[0])))
+		}
+
+		function touchEnd(e) {
+			canvas.removeEventListener("touchmove", touchMove)
+			window.removeEventListener("touchend", touchEnd)
+		}
+	</script>
+</body>
+</html>
