@@ -1,4 +1,6 @@
 import json
+import struct
+import re
 # me - this DAT.
 # webServerDAT - the connected Web Server DAT
 # request - A dictionary of the request fields. The dictionary will always contain the below entries, plus any additional entries dependent on the contents of the request
@@ -16,13 +18,21 @@ import json
 # return the response dictionary
 
 connections = op("connections")
-conns = {}
 
-def updatePlayer(client, data):
+def updateConn(client, data):
 	# for p in data:
-	o = op("conn"+str(connections[client,0].row))
-	o.op('clientX').panel.u = data['u']
-	o.op('clientY').panel.v = data['v']
+	# o = op("conn"+str(connections[client,0].row))
+	# o.op('clientX').panel.u = data['u']
+	# o.op('clientY').panel.v = data['v']
+	# op('examine1').cook()
+	# for key in data:
+		# print(key, data[key])
+		# conns[client][key] = data[key]
+		# o.Update()
+	parent().UpdateConn(client, data)
+	# print(op(re.sub("[.:]", "_", client)))
+	# op(client).panel.u = data[0]
+	# op(clinet).panel.v = data[1]
 	return
 
 def onHTTPRequest(webServerDAT, request, response):
@@ -30,29 +40,27 @@ def onHTTPRequest(webServerDAT, request, response):
 	response['statusCode'] = 200 # OK
 	response['statusReason'] = 'OK'
 	# response['data'] = '<b>TouchDesigner: </b>' + webServerDAT.name
-	response['data'] = op('client').text
+	response['data'] = "404 (try client)"
 	return response
 
 def onWebSocketOpen(webServerDAT, client):
-	print("socket opened", client)
-	connections.appendRow(client)
+	print("socket opened", client, webServerDAT.webSocketConnections)
+	parent().AddConn(client)
 	return
 
 def onWebSocketClose(webServerDAT, client):
 	print("socket closed", client)
-	connections.deleteRow(client)
+	parent().DelConn(client)
 	return
 
 def onWebSocketReceiveText(webServerDAT, client, data):
-	connIdx = str(connections[client, 0].row)
-	op("conn{}/clientX".format(connIdx)).panel.u = float(data)
-	op("conn{}/clientY".format(connIdx)).panel.v = float(data)
 	webServerDAT.webSocketSendText(client, data)
 	return
 
 def onWebSocketReceiveBinary(webServerDAT, client, data):
 	# print("socket binary received", float(data))
-	updatePlayer(client, json.loads(data.decode()))
+	# updateConn(client, json.loads(data.decode()))
+	updateConn(client, struct.unpack('ff', data))
 	# webServerDAT.webSocketSendBinary(client, data)
 	return
 
@@ -66,13 +74,11 @@ def onWebSocketReceivePong(webServerDAT, client, data):
 
 def onServerStart(webServerDAT):
 	print("server alive")
-	connections.clear()
-	conns.clear()
+	parent().WipeConns()
 	return
 
 def onServerStop(webServerDAT):
 	print("server dun")
-	connections.clear()
-	conns.clear()
+	parent().WipeConns()
 	return
 	
